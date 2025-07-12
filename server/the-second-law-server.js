@@ -4,7 +4,7 @@
 // All gamestate and event messages are broadcast only to members of a specific room.
 
 // --- Module Imports ---
-const fs = "fs"; // Node.js file system module for reading certificate files.
+const fs = require("fs");
 const express = require("express"); // Web server framework.
 const { createServer } = require("https"); // Node's native HTTPS server.
 const { Server } = require("socket.io"); // The Socket.IO server library.
@@ -16,9 +16,13 @@ const PORT = process.env.PORT || 3002; // The port for the server to listen on.
 // IMPORTANT: You must provide your own SSL certificate files for HTTPS to work.
 // These paths are placeholders. Update them to point to your actual certificate files.
 // For local testing without a domain, you can generate self-signed certificates.
+const CERT_PATH =
+  process.env.CERT_PATH || "/etc/letsencrypt/live/eminich.com/fullchain.pem";
+const KEY_PATH =
+  process.env.KEY_PATH || "/etc/letsencrypt/live/eminich.com/privkey.pem";
 const options = {
-  // key: fs.readFileSync('/path/to/your/privkey.pem'),
-  // cert: fs.readFileSync('/path/to/your/fullchain.pem'),
+  key: fs.readFileSync(CERT_PATH),
+  cert: fs.readFileSync(KEY_PATH),
 };
 
 // --- Server Setup ---
