@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const socket = new WebSocket("ws://localhost:8080");
+  const socket = new WebSocket("ws://localhost:3003");
 
   const DEFAULT_ZONE = "Commercial District";
   const DEFAULT_LOCATION = "Lablanc Coffee Shop";

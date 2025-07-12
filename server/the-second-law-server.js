@@ -7,7 +7,7 @@
 const WebSocket = require("ws");
 
 // Define the port the server will listen on.
-const PORT = 8080;
+const PORT = 3002;
 
 // Create a new WebSocket server instance.
 const wss = new WebSocket.Server({ port: PORT });
