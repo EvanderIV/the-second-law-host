@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gamestate Broadcaster</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="main-content">
+      <h1>Current Gamestate</h1>
+      <div id="gamestate-info">
+        <p><strong>Time:</strong> <span id="time"></span></p>
+        <p><strong>Zone:</strong> <span id="zone-name"></span></p>
+        <p><strong>Location:</strong> <span id="location-name"></span></p>
+        <p><strong>Interaction:</strong> <span id="interaction-name"></span></p>
+      </div>
+      <div id="interactions-list"></div>
+    </div>
+
+    <div id="side-panel">
+      <div id="side-panel-content">
+        <h2>Events</h2>
+        <div id="event-icons"></div>
+      </div>
+    </div>
+
+    <div id="bottom-bar">
+      <div id="bottom-bar-content">
+        <h3>Interaction Variations</h3>
+        <div id="variation-icons"></div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

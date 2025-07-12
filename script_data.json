@@ -1,0 +1,26 @@
+{
+  "zones": [
+    {
+      "name": "Commercial District",
+      "locations": [
+        {
+          "name": "Lablanc Coffee Shop",
+          "interactions": [
+            {
+              "title": "Shopkeeper",
+              "art": "sojuro/sojuro.png",
+              "sound": "none",
+              "variations": [
+                {
+                  "title": "_INHERIT_",
+                  "art": "sojuro/sojuro_angry.png",
+                  "sound": "stingers/violin_sting_2.mp3"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
