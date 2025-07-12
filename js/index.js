@@ -117,6 +117,35 @@ const sillyNames = [
   "nacho avg sailor",
 ];
 
+async function getEvents() {
+  return fetch("../the-second-law-client/js/events.json")
+    .then((response) => response.json())
+    .then((data) => {
+      for (let i = 0; i < data["events"].length; i++) {
+        const event = data["events"][i];
+        event.art = `assets/icons/events/${event.art}`;
+        event.sound = `../the-second-law-client/assets/audio/${event.sound}`;
+
+        let eventIcon = document.createElement("img");
+        eventIcon.classList.add("event-icon");
+        eventIcon.src = event.art;
+        eventIcon.addEventListener("click", () => {
+          if (typeof networkManager !== "undefined") {
+            networkManager.sendEvent(event.name);
+          } else {
+            console.error("networkManager not available for sendEvent");
+          }
+        });
+        document.getElementById("event-icons").appendChild(eventIcon);
+      }
+    })
+    .catch((error) => {
+      console.error("Error loading events:", error);
+      return [];
+    });
+}
+getEvents();
+
 function getRandomSillyName() {
   const adjIndex = Math.floor(Math.random() * sillyNames.length);
   return `${sillyNames[adjIndex]}`;
@@ -283,24 +312,6 @@ if (document.cookie.includes("skin")) {
   if (boatLr) boatLr.src = "./assets/boats/" + skin + "/lr.png";
 }
 
-let theme = "retro";
-if (document.cookie.includes("theme")) {
-  const themePickerElement = document.getElementById("theme-picker");
-  if (themePickerElement) themePickerElement.value = cookies.theme;
-  theme = cookies.theme; // Update global theme variable
-
-  let arrowL = document.getElementById("skin-back");
-  let arrowR = document.getElementById("skin-next");
-  if (arrowL) arrowL.src = "./img/arrow_" + cookies.theme + ".png";
-  if (arrowR) arrowR.src = "./img/arrow_" + cookies.theme + ".png";
-
-  let themeableElems = document.getElementsByClassName("themeable");
-  for (let i = 0; i < themeableElems.length; i++) {
-    themeableElems[i].classList.remove("modern", "red", "retro");
-    themeableElems[i].classList.add(cookies.theme);
-  }
-}
-
 let darkMode = false;
 if (cookies.darkMode === "1") {
   darkMode = true; // Set global darkMode state
@@ -310,17 +321,7 @@ if (cookies.darkMode === "1") {
   }
   const darkModeToggle = document.getElementById("dark-mode-toggle");
   if (darkModeToggle) darkModeToggle.checked = true;
-
-  const sqrElement = document.getElementById("sqr");
-  if (sqrElement) {
-    sqrElement.classList.remove("ship-display-" + theme); // Remove non-dark theme class
-    sqrElement.classList.add("ship-display-" + theme + "-darkmode");
-  }
 } else {
-  const sqrElement = document.getElementById("sqr");
-  if (sqrElement) {
-    sqrElement.classList.add("ship-display-" + theme);
-  }
 }
 
 const gameCodeLength = 4;
@@ -553,12 +554,6 @@ if (!isMobileUser) {
         console.error("networkManager not available for createRoom");
       }
       addPlayer("You (Host)", skin, true);
-      playBackgroundMusic(
-        "./assets/audio/lobby_music.mp3",
-        0.4,
-        musicVolume,
-        104
-      );
     });
   }
 
@@ -708,36 +703,6 @@ if (darkModeSwitch) {
     toggleDarkMode(event.target.checked);
     const desktopSwitch = document.getElementById("dark-mode-toggle-desktop");
     if (desktopSwitch) desktopSwitch.checked = event.target.checked;
-  });
-}
-
-let themePicker = document.getElementById("theme-picker");
-if (themePicker) {
-  themePicker.addEventListener("change", function (event) {
-    theme = event.target.value;
-    let arrowL = document.getElementById("skin-back");
-    let arrowR = document.getElementById("skin-next");
-    if (arrowL) arrowL.src = "./img/arrow_" + theme + ".png";
-    if (arrowR) arrowR.src = "./img/arrow_" + theme + ".png";
-
-    const sqrElement = document.getElementById("sqr");
-    if (sqrElement) {
-      sqrElement.className = "ship-display-base"; // Reset classes then add specific ones
-      if (isMobileUser) sqrElement.classList.add("ship-display");
-      else sqrElement.classList.add("grid");
-      sqrElement.classList.add(
-        darkMode
-          ? "ship-display-" + theme + "-darkmode"
-          : "ship-display-" + theme
-      );
-    }
-
-    let themeableElems = document.getElementsByClassName("themeable");
-    for (let i = 0; i < themeableElems.length; i++) {
-      themeableElems[i].classList.remove("modern", "red", "retro");
-      themeableElems[i].classList.add(theme);
-    }
-    setCookie("theme", theme);
   });
 }
 
@@ -994,19 +959,6 @@ function toggleDarkMode(isDark) {
   for (let i = 0; i < darkableElems.length; i++) {
     if (isDark) darkableElems[i].classList.add("darkmode");
     else darkableElems[i].classList.remove("darkmode");
-  }
-
-  const sqrElement = document.getElementById("sqr");
-  if (sqrElement) {
-    // Reset classes carefully to preserve base layout classes
-    sqrElement.className = sqrElement.className
-      .replace(/ship-display-[\w-]+darkmode/g, "")
-      .replace(/ship-display-(retro|modern|red)(?!-darkmode)/g, "");
-    if (isDark) {
-      sqrElement.classList.add("ship-display-" + theme + "-darkmode");
-    } else {
-      sqrElement.classList.add("ship-display-" + theme);
-    }
   }
   setCookie("darkMode", isDark ? "1" : "0");
 }
@@ -1284,10 +1236,6 @@ const countdownDisplay = document.createElement("div");
 countdownDisplay.id = "countdown-display";
 countdownDisplay.style.cssText =
   "display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 48px; font-weight: bold; color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); z-index: 1000;";
-if (theme === "retro") {
-  countdownDisplay.classList.add("retro");
-  countdownDisplay.style.fontFamily = "blocky, sans-serif";
-}
 document.body.appendChild(countdownDisplay);
 
 function startCountdown() {
@@ -1400,9 +1348,8 @@ function resetGameState() {
   if (settingsButton) settingsButton.style.display = "";
   if (settingsDivElem) settingsDivElem.style.display = "";
   if (readyWrapper) readyWrapper.style.display = "";
-  if (lobbyOverlay && isHost)
-    lobbyOverlay.style.display =
-      "block"; // Show lobby creation if host disconnected.
+  if (lobbyOverlay && isHost) lobbyOverlay.style.display = "block";
+  // Show lobby creation if host disconnected.
   else if (lobbyOverlay && !isHost) {
     /* Client logic for returning to join screen */
   }
@@ -1624,7 +1571,7 @@ let selectedCards = [];
 
 function createCard(suit, value) {
   const card = document.createElement("div");
-  card.className = `game-card darkable themeable ${theme}`;
+  card.className = `game-card darkable`;
   if (darkMode) card.classList.add("darkmode");
   card.dataset.suit = suit;
   card.dataset.value = value;

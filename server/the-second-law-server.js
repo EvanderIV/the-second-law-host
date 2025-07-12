@@ -157,6 +157,27 @@ io.on("connection", (client) => {
     });
   });
 
+  // Handle game events
+  client.on("event", (eventData) => {
+    if (!roomCode) return;
+
+    const room = activeRooms.get(roomCode);
+    if (!room) return;
+
+    if (client.id === room.hostId) {
+      // If host sends event, broadcast to all players in room
+      io.to(roomCode).emit("event", eventData);
+      console.log(`Host broadcasted event in room ${roomCode}:`, eventData);
+    } else {
+      // If player sends event, forward to host only
+      io.to(room.hostId).emit("event", eventData);
+      console.log(
+        `Player ${client.id} sent event to host in room ${roomCode}:`,
+        eventData
+      );
+    }
+  });
+
   const handleDisconnect = () => {
     if (roomCode) {
       const room = activeRooms.get(roomCode);

@@ -298,6 +298,14 @@ window.networkManager = {
       );
     }
   },
+  sendEvent: (eventData) => {
+    console.log("NetworkManager: Sending event:", eventData);
+    if (socket && socket.connected) {
+      socket.emit("event", eventData);
+    } else {
+      console.error("NetworkManager: Cannot send event - socket not connected");
+    }
+  },
   setCallbacks: (callbacks) => {
     // Set all callbacks
     onPlayerJoined = callbacks.onPlayerJoined;
