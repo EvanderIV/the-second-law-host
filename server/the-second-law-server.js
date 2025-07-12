@@ -1,156 +1,193 @@
-// --- WebSocket Server with Room Management (using Socket.IO) ---
-// This script sets up a more advanced server using Express and Socket.IO.
-// It allows a "host" to create a room, and "clients" to join that room.
-// All gamestate and event messages are broadcast only to members of a specific room.
-
-// --- Module Imports ---
-const fs = require("fs");
-const express = require("express"); // Web server framework.
-const { createServer } = require("https"); // Node's native HTTPS server.
-const { Server } = require("socket.io"); // The Socket.IO server library.
-
-// --- Configuration ---
-const PORT = process.env.PORT || 3002; // The port for the server to listen on.
-
-// --- HTTPS Configuration ---
-// IMPORTANT: You must provide your own SSL certificate files for HTTPS to work.
-// These paths are placeholders. Update them to point to your actual certificate files.
-// For local testing without a domain, you can generate self-signed certificates.
 const CERT_PATH =
   process.env.CERT_PATH || "/etc/letsencrypt/live/eminich.com/fullchain.pem";
 const KEY_PATH =
   process.env.KEY_PATH || "/etc/letsencrypt/live/eminich.com/privkey.pem";
+const fs = require("fs");
 const options = {
-  key: fs.readFileSync(CERT_PATH),
-  cert: fs.readFileSync(KEY_PATH),
+  key: fs.readFileSync(KEY_PATH),
+  cert: fs.readFileSync(CERT_PATH),
 };
 
-// --- Server Setup ---
+const express = require("express");
 const app = express();
-// Create an HTTPS server if certificate options are provided, otherwise fallback to HTTP.
-// Note: The 'ws' library from the previous version is no longer needed.
-const httpServer = createServer(options, app);
+const https = require("https").createServer(options, app);
 
-const io = new Server(httpServer, {
-  // Socket.IO configuration options, mimicking the provided example.
+const io = require("socket.io")(https, {
   cors: {
-    origin: "*", // For development, allow all origins. For production, restrict this to your domain.
+    origin: "eminich.com",
     methods: ["GET", "POST"],
   },
-  transports: ["websocket", "polling"], // Specify allowed transport methods.
+  maxHttpBufferSize: 1e8,
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  transports: ["websocket", "polling"],
+  allowEIO3: true,
 });
 
-// --- State Management ---
-// A Map to store all active rooms.
-// The key is the roomCode (string), and the value is an object containing room info.
+// Store active rooms and their hosts
 const activeRooms = new Map();
 
-// --- Socket.IO Connection Logic ---
 io.on("connection", (client) => {
-  console.log(`[Server] Client connected with ID: ${client.id}`);
-  let currentRoomCode = null; // Store the room code for this specific client connection.
+  let roomCode = null;
+  let lastPing = Date.now();
+  let pingInterval;
 
-  // --- Host Events ---
-  // Event for a host to create a new room.
   client.on("create-room", (data) => {
-    const { roomCode } = data;
-    if (!roomCode) {
-      client.emit("error", {
-        message: "roomCode is required to create a room.",
-      });
-      return;
-    }
-
+    roomCode = data.roomCode;
+    console.log(`Creating room with code: ${roomCode}`);
     if (activeRooms.has(roomCode)) {
-      client.emit("error", {
-        message: `Room with code '${roomCode}' already exists.`,
-      });
+      client.emit("roomError", { message: "Room already exists" });
       return;
     }
-
-    // Create and store the new room information.
     activeRooms.set(roomCode, {
       hostId: client.id,
-      clients: new Set(), // A set to store the socket IDs of clients in the room.
+      hostSkin: data.hostSkin,
+      players: new Map(),
     });
-
-    currentRoomCode = roomCode;
-    client.join(roomCode); // Have the host's socket join the socket.io room.
+    client.join(roomCode);
     client.emit("roomCreated", { roomCode });
-    console.log(
-      `[Server] Host ${client.id} created and joined room: ${roomCode}`
-    );
+    console.log(`Host created room: ${roomCode}`);
   });
 
-  // --- Client Events ---
-  // Event for a client to join an existing room.
   client.on("join-room", (data) => {
-    const { roomCode } = data;
+    roomCode = data.roomCode;
+    console.log(`Join room attempt: ${roomCode}`);
+    const playerData = {
+      name: data.name,
+      skinId: data.skinId,
+      ready: false,
+    };
+
     if (!activeRooms.has(roomCode)) {
-      client.emit("error", {
-        message: `Room with code '${roomCode}' not found.`,
-      });
+      client.emit("roomError", { message: "Room not found" });
       return;
     }
 
     const room = activeRooms.get(roomCode);
-    currentRoomCode = roomCode;
-    room.clients.add(client.id); // Add this client's ID to our room management set.
-    client.join(roomCode); // Have the client's socket join the socket.io room.
+    if (room.players.size >= 4) {
+      client.emit("roomError", { message: "Room is full" });
+      return;
+    }
 
-    client.emit("joinSuccess", { roomCode });
-    console.log(`[Server] Client ${client.id} joined room: ${roomCode}`);
+    // Check if this client is already in the room
+    if (room.players.has(client.id)) {
+      console.log(`Client ${client.id} already in room ${roomCode}`);
+      client.emit("joinSuccess", {
+        roomCode,
+        hostSkin: room.hostSkin,
+      });
+      return;
+    }
+
+    room.players.set(client.id, playerData);
+    client.join(roomCode);
+    client.emit("joinSuccess", {
+      roomCode,
+      hostSkin: room.hostSkin,
+    });
+    io.to(room.hostId).emit("playerJoined", playerData);
+    console.log(`Player ${data.name} joined room: ${roomCode}`);
   });
 
-  // --- Game Data Broadcasting (from Host) ---
-  // These are the original events, now adapted for the room system.
-  // We expect these to be sent only by the host.
-  const broadcastHandler = (eventName) => (payload) => {
-    if (currentRoomCode) {
-      const room = activeRooms.get(currentRoomCode);
-      // Ensure the message is coming from the host of this room.
-      if (room && room.hostId === client.id) {
-        // Broadcast to all other clients in the room, excluding the sender (the host).
-        client.to(currentRoomCode).emit(eventName, payload);
-        console.log(
-          `[Server] Host broadcasted '${eventName}' to room: ${currentRoomCode}`
-        );
+  client.on("ping", () => {
+    client.emit("pong");
+    lastPing = Date.now();
+  });
+
+  // Handle ready state changes
+  client.on("ready-state-change", (data) => {
+    if (!roomCode) return;
+
+    const room = activeRooms.get(roomCode);
+    if (!room) return;
+
+    const playerData = room.players.get(client.id);
+    if (!playerData) return;
+
+    playerData.ready = data.ready;
+    // Notify all clients about ready state change
+    io.to(roomCode).emit("ready-state-update", {
+      name: playerData.name,
+      ready: data.ready,
+    });
+  });
+
+  // Handle game start from host
+  client.on("gameStart", () => {
+    if (!roomCode) return;
+
+    const room = activeRooms.get(roomCode);
+    if (!room) return;
+
+    // Only allow host to start the game
+    if (client.id === room.hostId) {
+      // Notify all clients in the room that the game is starting
+      io.to(roomCode).emit("gameStarting");
+      console.log(`Game starting in room: ${roomCode}`);
+    }
+  });
+
+  // Handle player info updates (nickname and skin changes)
+  client.on("updatePlayerInfo", (data) => {
+    if (!roomCode) return;
+
+    const room = activeRooms.get(roomCode);
+    if (!room) return;
+
+    const playerData = room.players.get(client.id);
+    if (!playerData) return;
+
+    const oldName = playerData.name;
+
+    // Update player data in the room
+    if (data.newNickname) {
+      playerData.name = data.newNickname;
+    }
+    if (data.newSkin !== undefined) {
+      playerData.skinId = data.newSkin;
+    }
+
+    console.log(`Player ${client.id} updated info:`, playerData);
+
+    // Notify host about the changes
+    io.to(room.hostId).emit("player-info-update", {
+      oldName: oldName,
+      newName: data.newNickname,
+      newSkin: data.newSkin,
+    });
+  });
+
+  const handleDisconnect = () => {
+    if (roomCode) {
+      const room = activeRooms.get(roomCode);
+      if (room) {
+        if (client.id === room.hostId) {
+          // Host disconnected, notify all players and close room
+          io.to(roomCode).emit("roomClosed");
+          activeRooms.delete(roomCode);
+        } else {
+          // Player disconnected, notify host
+          const playerData = room.players.get(client.id);
+          if (playerData) {
+            io.to(room.hostId).emit("playerLeft", { name: playerData.name });
+            room.players.delete(client.id);
+          }
+        }
+        // Leave the room
+        client.leave(roomCode);
       }
+    }
+
+    // Clean up ping interval
+    if (pingInterval) {
+      clearInterval(pingInterval);
     }
   };
 
-  client.on("gamestateUpdate", broadcastHandler("gamestateUpdate"));
-  client.on("event", broadcastHandler("event"));
-
-  // --- Disconnection Logic ---
-  client.on("disconnect", () => {
-    console.log(`[Server] Client disconnected: ${client.id}`);
-    if (currentRoomCode) {
-      const room = activeRooms.get(currentRoomCode);
-      if (!room) return;
-
-      // Check if the disconnected client was the host.
-      if (room.hostId === client.id) {
-        // The host disconnected. Notify all clients in the room and delete the room.
-        io.to(currentRoomCode).emit("roomClosed", {
-          message: "The host has disconnected.",
-        });
-        activeRooms.delete(currentRoomCode);
-        console.log(
-          `[Server] Host disconnected. Room '${currentRoomCode}' closed.`
-        );
-      } else {
-        // A regular client disconnected. Remove them from the set.
-        room.clients.delete(client.id);
-        console.log(
-          `[Server] Client ${client.id} left room '${currentRoomCode}'.`
-        );
-      }
-    }
-  });
+  client.on("disconnect", handleDisconnect);
 });
 
-// --- Start Server ---
-httpServer.listen(PORT, () => {
-  console.log(`[Server] Server running on port ${PORT}`);
+const PORT = process.env.PORT || 3000;
+https.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
