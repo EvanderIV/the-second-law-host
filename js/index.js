@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const socket = new WebSocket("ws://localhost:3002");
+  const socket = new WebSocket("ws://eminich.com:3003");
 
   const DEFAULT_ZONE = "Commercial District";
   const DEFAULT_LOCATION = "Lablanc Coffee Shop";
@@ -13,21 +13,21 @@ document.addEventListener("DOMContentLoaded", () => {
     weather: "sunny",
   };
 
-  socket.onopen = () => {
-    console.log("WebSocket connection established.");
-    // Broadcast the initial state once connected.
-    broadcastGamestate();
-  };
+  // socket.onopen = () => {
+  //   console.log("WebSocket connection established.");
+  //   // Broadcast the initial state once connected.
+  //   broadcastGamestate();
+  // };
 
-  socket.onerror = (error) => {
-    console.error("WebSocket Error: ", error);
-    // Alert the user that the connection to the broadcast service failed.
-    const errorDiv = document.getElementById("main-content");
-    errorDiv.innerHTML =
-      `<div style="background-color: #ffdddd; border-left: 6px solid #f44336; padding: 15px; margin: 20px 0;">
-            <strong>Connection Failed!</strong> Could not connect to the WebSocket server. Ensure the server is running.
-        </div>` + errorDiv.innerHTML;
-  };
+  // socket.onerror = (error) => {
+  //   console.error("WebSocket Error: ", error);
+  //   // Alert the user that the connection to the broadcast service failed.
+  //   const errorDiv = document.getElementById("main-content");
+  //   errorDiv.innerHTML =
+  //     `<div style="background-color: #ffdddd; border-left: 6px solid #f44336; padding: 15px; margin: 20px 0;">
+  //           <strong>Connection Failed!</strong> Could not connect to the WebSocket server. Ensure the server is running.
+  //       </div>` + errorDiv.innerHTML;
+  // };
 
   fetch("script_data.json")
     .then((response) => {
