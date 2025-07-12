@@ -98,7 +98,7 @@ function connectToServer() {
   if (socket && socket.connected) {
     return; // Already connected
   }
-  socket = io("https://eminich.com:3000", {
+  socket = io("https://eminich.com:3002", {
     reconnectionAttempts: 5,
     timeout: 10000,
     transports: ["websocket", "polling"],

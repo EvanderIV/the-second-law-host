@@ -1,40 +1,139 @@
 <!DOCTYPE html>
+
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gamestate Broadcaster</title>
-    <link rel="stylesheet" href="style.css" />
-    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
-  </head>
-  <body>
-    <div id="main-content">
-      <h1>Current Gamestate</h1>
-      <div id="gamestate-info">
-        <p><strong>Time:</strong> <span id="time"></span></p>
-        <p><strong>Zone:</strong> <span id="zone-name"></span></p>
-        <p><strong>Location:</strong> <span id="location-name"></span></p>
-        <p><strong>Interaction:</strong> <span id="interaction-name"></span></p>
-      </div>
-      <div id="interactions-list"></div>
-    </div>
-
-    <div id="side-panel">
-      <div id="side-panel-content">
-        <h2>Events</h2>
-        <div id="event-icons"></div>
-      </div>
-    </div>
-
-    <div id="bottom-bar">
-      <div id="bottom-bar-content">
-        <h3>Interaction Variations</h3>
-        <div id="variation-icons"></div>
-      </div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
-    <script type="module" src="./js/networking.js"></script>
-    <script type="module" src="./js/index.js"></script>
-  </body>
+<head>
+	<title>BoatGame.exe</title>
+	<link rel="icon" href="/games/img/boatgame_icon.png">
+	<meta name="darkreader-lock">
+	<link rel="stylesheet" type="text/css" href="./css/index.css">
+	<script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+</head>
+<body class="darkable">
+	<div id="lobby-overlay" class="desktop-only">
+		<img id="game-logo" class="desktop-only" src="./img/boatgame_icon.png" alt="BoatGame Logo">
+		<p id="game-title" class="desktop-only darkable themeable retro">An original game by xleph</p>
+		<button id="create-lobby" class="desktop-only themeable retro">CREATE PRIVATE LOBBY</button>
+	</div>
+	<div id="room-code" class="desktop-only darkable themeable retro"></div>
+	<div class="game-container">
+		<div id="player-list" class="desktop-only darkable themeable retro">
+			<div id="players-container"></div>
+		</div>
+		<div id="root" class="root flex column">
+			<div id="sqr">
+				<div id="game-grid" class="desktop-only"></div>
+				<div id="boat_ur_container" class="boat-container">
+					<img id="boat_ur" class="mobile-only playerBoat" src="./assets/boats/1/ur.png" style="left: 49.9%; top: 18.01cqw; z-index: 10;">
+					<img src="./img/arrow_retro.png" id="right-arrow" class="direction-arrow right-arrow darkable themeable">
+				</div>
+				<div id="boat_ul_container" class="boat-container">
+					<img id="boat_ul" class="mobile-only playerBoat" src="./assets/boats/1/ul.png" style="left: 20%; top: 18.01cqw; z-index: 10;">
+					<img src="./img/arrow_retro.png" id="top-arrow" class="direction-arrow top-arrow darkable themeable">
+				</div>
+				<div id="boat_ll_container" class="boat-container">
+					<img id="boat_ll" class="mobile-only playerBoat" src="./assets/boats/1/ll.png" style="left: 20%; top: 48cqw; z-index: 10;">
+					<img src="./img/arrow_retro.png" id="left-arrow" class="direction-arrow left-arrow darkable themeable">
+				</div>
+				<div id="boat_lr_container" class="boat-container">
+					<img id="boat_lr" class="mobile-only playerBoat" src="./assets/boats/1/lr.png" style="left: 49.9%; top: 48cqw; z-index: 10;">
+					<img src="./img/arrow_retro.png" id="bottom-arrow" class="direction-arrow bottom-arrow darkable themeable">
+				</div>
+			</div>
+			<div id="suit-squares" class="mobile-only">
+				<div class="suit-square darkable themeable" data-suit="hearts">&heartsuit;</div>
+				<div class="suit-square darkable themeable" data-suit="diamonds">&diamondsuit;</div>
+				<div class="suit-square darkable themeable" data-suit="clubs">&clubsuit;</div>
+				<div class="suit-square darkable themeable" data-suit="spades">&spadesuit;</div>
+			</div>
+			<div id="card-hand" class="mobile-only darkable themeable">
+				<div id="cards-container"></div>
+				<button id="confirm-cards" class="darkable themeable retro" disabled>CONFIRM CARDS</button>
+			</div>
+			<input id="nickname" class="mobile-only single-line-textarea darkable themeable retro" style="margin-top: 16cqw; height: 12cqw; width: 60%;" type="text" name="nickname-input" placeholder="Nickname" maxlength="20"></input>
+			<input id="game-code" class="input-uppercase mobile-only single-line-textarea darkable themeable retro" style="margin-top: 2cqw; height: 8cqw;" type="search" name="game-code-input" placeholder="Room Code" maxlength="4"></input>
+			<button id="join-button" class="mobile-only darkable themeable retro" disabled style="margin-top: 1cqw; height: 6cqw;">JOIN</button>
+			<div id="error-message"></div>
+			<div id="ready-wrapper" class="ready-wrapper mobile-only">
+				<div id="ready-button" class="darkable themeable retro" role="button" tabindex="0" aria-disabled="true" style="display: none;"></div>
+				<p id="ready-text" class="ready-text darkable themeable retro" style="z-index: 2000; display: none;">Ready</p>
+			</div>
+			<p id="settings-button" class="mobile-only darkable themeable retro">SETTINGS</p>
+			<div id="settings-div" class="mobile-only darkable themeable retro">
+				<audio id="settings-open-sfx" src="./audio/paper_slide_in.mp3"></audio>
+				<audio id="settings-close-sfx" src="./audio/paper_slide_out.mp3"></audio>
+				<div class="flex flex-center" style="position: fixed; margin-top: 3%; width: 100%">
+					<p id="skin-id" class="darkable" style="position: inline; margin-top: 1%;">Skin #1</p>
+				</div>
+				<img src="./img/arrow_retro.png" id="skin-back" class="darkable themeable">
+				<img src="./img/arrow_retro.png" id="skin-next" class="darkable themeable">
+				<p class="darkable" style="position: fixed; margin-top: 12%; left: 30%;">Dark Mode</p>
+				<label class="toggle" style="position: fixed; margin-top: 12%; left: 59%;">
+					<input type="checkbox" id="dark-mode-toggle" name="btnToggle" />
+					<span id="dark-mode-slider" class="slider themeable retro"></span>
+				</label>
+				<p class="darkable" style="position: fixed; margin-top: 20%; left: 30%;">Theme</p>
+				<select id="theme-picker" style="font-size: 2rem; width: 20cqw; height: 6cqw; position: fixed; margin-top: 19.5%; left: 49%;">
+					<option value="retro">Retro</option>
+					<option value="modern">Modern</option>
+					<option value="red">Crimson</option>
+				</select>
+			<div>
+		</div>
+	</div>
+	<button id="settings-btn-desktop" class="desktop-only darkable themeable retro">SETTINGS</button>
+	<div id="settings-modal" class="modal desktop-only darkable themeable retro">
+		<div class="modal-content darkable themeable">
+			<div class="tab-container">
+				<button class="darkable tab-button active" data-tab="mode">Mode</button>
+				<button class="darkable tab-button" data-tab="gameplay">Gameplay</button>
+				<button class="darkable tab-button" data-tab="advanced">System</button>
+			</div>
+			<div class="tab-content">
+				<div id="mode-tab" class="darkable tab-panel active">
+					<h2>Game Mode Settings</h2>
+				</div>
+				<div id="gameplay-tab" class="darkable tab-panel">
+					<h2>Gameplay Settings</h2>
+				</div>
+				<div id="advanced-tab" class="darkable tab-panel">
+					<h2>System Settings</h2>
+					<div class="darkable settings-group">
+						<h3>Display Settings</h3>
+						<div class="setting-item">
+							<label>Dark Mode</label>
+							<label class="toggle">
+								<input type="checkbox" id="dark-mode-toggle-desktop">
+								<span class="slider themeable retro"></span>
+							</label>
+						</div>
+					</div>
+					<div class="darkable settings-group">
+						<h3>Audio Settings</h3>
+						<div class="setting-item">
+							<label for="music-volume">Music Volume</label>
+							<input type="range" id="music-volume" min="0" max="100" value="20">
+						</div>
+						<div class="setting-item">
+							<label for="sfx-volume">Sound Effects Volume</label>
+							<input type="range" id="sfx-volume" min="0" max="100" value="30">
+						</div>
+						<div class="setting-item">
+							<label>Play Join/Leave Sounds</label>
+							<label class="toggle">
+								<input type="checkbox" id="play-join-sounds" checked>
+								<span class="slider themeable retro"></span>
+							</label>
+						</div>
+					</div>
+				</div>
+			</div>
+			<button id="close-settings" class="darkable themeable retro">&times;</button>
+		</div>
+	</div>
+</body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+<script type="module" src="./js/networking.js"></script>
+<script type="module" src="./js/index.js"></script>
 </html>
+
+
