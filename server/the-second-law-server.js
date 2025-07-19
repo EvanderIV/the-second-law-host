@@ -43,6 +43,12 @@ io.on("connection", (client) => {
       hostId: client.id,
       hostSkin: data.hostSkin,
       players: new Map(),
+      gameState: {
+        sector: null,
+        location: null,
+        weather: "default",
+        timeOfDay: "default",
+      },
     });
     client.join(roomCode);
     client.emit("roomCreated", { roomCode });
@@ -84,6 +90,7 @@ io.on("connection", (client) => {
     client.emit("joinSuccess", {
       roomCode,
       hostSkin: room.hostSkin,
+      gameState: room.gameState,
     });
     io.to(room.hostId).emit("playerJoined", playerData);
     console.log(`Player ${data.name} joined room: ${roomCode}`);
@@ -157,7 +164,45 @@ io.on("connection", (client) => {
     });
   });
 
-  // Handle game events
+  // Handle game state updates
+  client.on("game_state_update", (gameState) => {
+    if (!roomCode) return;
+
+    const room = activeRooms.get(roomCode);
+    if (!room) return;
+
+    // Only allow host to update game state
+    if (client.id === room.hostId) {
+      // Validate the game state structure
+      const validState =
+        gameState &&
+        typeof gameState === "object" &&
+        (gameState.sector === null || typeof gameState.sector === "string") &&
+        (gameState.location === null ||
+          typeof gameState.location === "string") &&
+        ["clear", "rain", "storm", "fog"].includes(gameState.weather) &&
+        ["dawn", "day", "dusk", "night"].includes(gameState.timeOfDay);
+
+      if (!validState) {
+        console.error("Invalid game state received:", gameState);
+        return;
+      }
+
+      // Update the room's game state
+      room.gameState = {
+        sector: gameState.sector,
+        location: gameState.location,
+        weather: gameState.weather,
+        timeOfDay: gameState.timeOfDay,
+      };
+
+      // Broadcast the new state to all clients in the room
+      io.to(roomCode).emit("game_state_update", room.gameState);
+      console.log(`Game state updated in room ${roomCode}:`, room.gameState);
+    }
+  });
+
+  // Handle generic game events
   client.on("event", (eventData) => {
     if (!roomCode) return;
 

@@ -8,6 +8,7 @@ let onReadyStateUpdate;
 let onPlayerInfoUpdate;
 let onGameStarting;
 let onRoomClosed;
+let onGameStateUpdate;
 
 function setupSocketEventHandlers() {
   if (!socket) return;
@@ -90,6 +91,14 @@ function setupSocketEventHandlers() {
     console.log("Received gameStarting event");
     if (onGameStarting) {
       onGameStarting();
+    }
+  });
+
+  // Handle game state updates
+  socket.on("gameState", (gameState) => {
+    console.log("Received game state update:", gameState);
+    if (onGameStateUpdate) {
+      onGameStateUpdate(gameState);
     }
   });
 }
@@ -284,10 +293,23 @@ window.networkManager = {
   setOnRoomClosed: (callback) => {
     onRoomClosed = callback;
   },
+  setOnGameStateUpdate: (callback) => {
+    onGameStateUpdate = callback;
+  },
   connectToServer,
   createRoom,
   joinRoom,
   setReadyState,
+  sendGameState: (gameState) => {
+    console.log("NetworkManager: Sending game state update:", gameState);
+    if (socket && socket.connected) {
+      socket.emit("gameState", gameState);
+    } else {
+      console.error(
+        "NetworkManager: Cannot send game state - socket not connected"
+      );
+    }
+  },
   updatePlayerInfo: (data) => {
     console.log("NetworkManager: Sending player info update:", data);
     if (socket && socket.connected) {
@@ -314,6 +336,7 @@ window.networkManager = {
     onPlayerInfoUpdate = callbacks.onPlayerInfoUpdate;
     onGameStarting = callbacks.onGameStarting;
     onRoomClosed = callbacks.onRoomClosed;
+    onGameStateUpdate = callbacks.onGameStateUpdate;
 
     // After setting callbacks, re-setup event handlers to ensure they're using the new callbacks
     setupSocketEventHandlers();

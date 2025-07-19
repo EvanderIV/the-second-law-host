@@ -865,92 +865,6 @@ const readyButton = document.getElementById("ready-button");
 const skinBackArrow = document.getElementById("skin-back"); // Use consistent naming with other btn vars
 const skinNextArrow = document.getElementById("skin-next");
 
-if (readyButton) {
-  readyButton.addEventListener("keydown", function (e) {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      if (this.getAttribute("aria-disabled") === "true") return;
-      this.click();
-    }
-  });
-
-  readyButton.addEventListener("click", function () {
-    if (this.getAttribute("aria-disabled") === "true") return;
-
-    // Ensure boatSections and placedSuits are defined (they are at global scope)
-    if (
-      typeof boatSections !== "undefined" &&
-      typeof placedSuits !== "undefined" &&
-      boatSections.length === placedSuits.size
-    ) {
-      isReady = !isReady;
-      this.style.backgroundColor = isReady ? "#44AA44" : "#AA4444";
-      this.classList.toggle("not-ready", !isReady);
-      this.setAttribute(
-        "aria-label",
-        isReady ? "Click to unready" : "Click to ready up"
-      );
-
-      if (skinBackArrow) skinBackArrow.classList.toggle("disabled", isReady);
-      if (skinNextArrow) skinNextArrow.classList.toggle("disabled", isReady);
-      if (nicknameInput) nicknameInput.disabled = isReady;
-
-      document.querySelectorAll(".suit-square").forEach((square) => {
-        square.style.pointerEvents = isReady ? "none" : "auto";
-        square.style.opacity = isReady ? "0.7" : "1";
-      });
-
-      if (typeof networkManager !== "undefined")
-        networkManager.setReadyState(isReady);
-
-      if (!isReady && countdownTimer) {
-        cancelCountdown();
-      }
-    } else {
-      const errorMsgElement = document.getElementById("error-message");
-      if (errorMsgElement) {
-        errorMsgElement.textContent =
-          "All ship sections must be placed before readying up!";
-        errorMsgElement.style.display = "block";
-        setTimeout(() => {
-          errorMsgElement.style.display = "none";
-        }, 3000);
-      }
-    }
-  });
-  readyButton.setAttribute("aria-label", "Click to ready up");
-  // Initial state is disabled, will be enabled by updateReadyButtonState
-  readyButton.setAttribute("aria-disabled", "true");
-}
-
-function updateReadyButtonState() {
-  const readyBtn = document.getElementById("ready-button");
-  if (!readyBtn) return;
-
-  if (
-    typeof boatSections !== "undefined" &&
-    typeof placedSuits !== "undefined"
-  ) {
-    // Check if all boat sections have a suit placed in them
-    const allSuitsPlaced = placedSuits.size === boatSections.length;
-    readyBtn.setAttribute("aria-disabled", allSuitsPlaced ? "false" : "true");
-    if (!allSuitsPlaced) {
-      readyBtn.classList.add("not-ready");
-      readyBtn.style.backgroundColor = "#AA4444";
-      isReady = false;
-      readyBtn.setAttribute(
-        "aria-label",
-        "Place all ship sections to ready up"
-      );
-    } else if (!isReady) {
-      // Only update if not already in 'isReady' state
-      readyBtn.classList.remove("not-ready"); // Or ensure it's not there if logic allows toggling off ready
-      readyBtn.style.backgroundColor = "#AA4444"; // Default ready-up color when all pieces placed but not yet clicked
-      readyBtn.setAttribute("aria-label", "Click to ready up");
-    }
-  }
-}
-
 let darkModeSwitchDesktop = document.getElementById("dark-mode-toggle-desktop");
 
 function toggleDarkMode(isDark) {
@@ -992,243 +906,6 @@ let currentSquare = null;
 let offsetX = 0,
   offsetY = 0;
 let originalPosition = null;
-
-function updateGridVisibility() {
-  const suitSquaresContainer = document.getElementById("suit-squares");
-  if (!suitSquaresContainer) return;
-  const allPlaced =
-    boatSections.length > 0 &&
-    placedSuits.size === boatSections.length &&
-    boatSections.length > 0; // Ensure boatSections is not empty
-  if (allPlaced) {
-    suitSquaresContainer.classList.add("empty");
-  } else {
-    suitSquaresContainer.classList.remove("empty");
-  }
-}
-
-function resetSquarePosition(square, originalPosData) {
-  square.classList.remove("placed");
-  square.style.position = "";
-  square.style.left = "";
-  square.style.top = "";
-  square.style.transition = "all 0.3s ease";
-
-  if (
-    originalPosData &&
-    originalPosData.parent &&
-    originalPosData.parent !== square.parentElement
-  ) {
-    originalPosData.parent.appendChild(square);
-  }
-  // If it was originally in a container that used grid/flex, it should return to its natural flow
-  // Clearing explicit position styles usually suffices if the original parent handles layout.
-}
-
-if (suitSquares.length > 0 && boatSections.length > 0) {
-  suitSquares.forEach((square) => {
-    square.addEventListener("touchstart", (e) => {
-      if (isReady) {
-        e.preventDefault();
-        return;
-      }
-      isDragging = true;
-      currentSquare = square;
-      const touch = e.touches[0];
-      const rect = square.getBoundingClientRect();
-      offsetX = touch.clientX - rect.left;
-      offsetY = touch.clientY - rect.top;
-      originalPosition = {
-        left: rect.left,
-        top: rect.top,
-        parent: square.parentElement,
-      }; // Store original parent
-      square.style.transition = "none";
-      square.style.zIndex = "1000";
-      square.style.opacity = "0.8";
-      // Temporarily append to body or a high-level container if dealing with stacking contexts or overflow issues
-      // document.body.appendChild(currentSquare);
-      // currentSquare.style.position = 'fixed'; // Set position after appending if moved
-    });
-
-    square.addEventListener("touchmove", (e) => {
-      if (!isDragging || !currentSquare) return;
-      e.preventDefault();
-      const touch = e.touches[0];
-      // Ensure position is fixed relative to viewport for dragging
-      if (currentSquare.style.position !== "fixed")
-        currentSquare.style.position = "fixed";
-      currentSquare.style.left = `${touch.clientX - offsetX}px`;
-      currentSquare.style.top = `${touch.clientY - offsetY}px`;
-
-      const squareRect = currentSquare.getBoundingClientRect();
-      const squareCenter = {
-        x: squareRect.left + squareRect.width / 2,
-        y: squareRect.top + squareRect.height / 2,
-      };
-
-      boatSections.forEach((section) => (section.style.opacity = "1")); // Reset opacity for all
-
-      let closestSection = null;
-      let minDistance = Infinity;
-      boatSections.forEach((section) => {
-        const sectionRect = section.getBoundingClientRect();
-        const sectionCenter = {
-          x: sectionRect.left + sectionRect.width / 2,
-          y: sectionRect.top + sectionRect.height / 2,
-        };
-        const distance = Math.hypot(
-          squareCenter.x - sectionCenter.x,
-          squareCenter.y - sectionCenter.y
-        );
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestSection = section;
-        }
-      });
-      if (closestSection && minDistance < 100) {
-        // Threshold for highlighting
-        closestSection.style.opacity = "0.7";
-      }
-    });
-  });
-
-  document.addEventListener("touchend", (e) => {
-    if (!isDragging || !currentSquare) return;
-
-    // currentSquare.style.opacity = '1'; // Reset opacity before placement decision
-    // currentSquare.style.zIndex = '1';   // Reset z-index
-
-    const squareRect = currentSquare.getBoundingClientRect();
-    let isPlacedSuccessfully = false;
-    const squareCenter = {
-      x: squareRect.left + squareRect.width / 2,
-      y: squareRect.top + squareRect.height / 2,
-    };
-    let closestTargetSection = null;
-    let minDistanceToTarget = Infinity;
-    let closestTargetRect = null;
-
-    boatSections.forEach((section) => {
-      section.style.opacity = "1"; // Ensure all opacities are reset
-      const sectionRect = section.getBoundingClientRect();
-      const sectionCenter = {
-        x: sectionRect.left + sectionRect.width / 2,
-        y: sectionRect.top + sectionRect.height / 2,
-      };
-      const distance = Math.hypot(
-        squareCenter.x - sectionCenter.x,
-        squareCenter.y - sectionCenter.y
-      );
-      // A common threshold for a "snap" is if the center of the dragged item is within the target's bounds,
-      // or if the distance is less than half the smaller dimension of the target/dragged item.
-      // Using a fixed pixel distance (e.g., 100px) as per original logic.
-      if (distance < minDistanceToTarget && distance < 100) {
-        // Distance check from original logic
-        minDistanceToTarget = distance;
-        closestTargetSection = section;
-        closestTargetRect = sectionRect;
-      }
-    });
-
-    if (closestTargetSection) {
-      // A target was found within the threshold
-      isPlacedSuccessfully = true;
-      const suitToPlace = currentSquare.dataset.suit;
-      const targetSectionId = closestTargetSection.id;
-
-      const suitCurrentlyInTarget = placedSuits.get(targetSectionId);
-      const previousSectionIdOfSuitToPlace = Array.from(
-        placedSuits.entries()
-      ).find(([, s]) => s === suitToPlace)?.[0];
-
-      // If target is occupied by a different suit
-      if (suitCurrentlyInTarget && suitCurrentlyInTarget !== suitToPlace) {
-        const squareOfDisplacedSuit = document.querySelector(
-          `.suit-square[data-suit="${suitCurrentlyInTarget}"]`
-        );
-        if (squareOfDisplacedSuit) {
-          if (previousSectionIdOfSuitToPlace) {
-            // Move displaced suit to old spot of current square
-            const oldSectionElement = document.getElementById(
-              previousSectionIdOfSuitToPlace
-            );
-            if (oldSectionElement) {
-              const oldRect = oldSectionElement.getBoundingClientRect();
-              squareOfDisplacedSuit.style.position = "fixed";
-              squareOfDisplacedSuit.style.left = `${
-                oldRect.left +
-                (oldRect.width - squareOfDisplacedSuit.offsetWidth) / 2
-              }px`;
-              squareOfDisplacedSuit.style.top = `${
-                oldRect.top +
-                (oldRect.height - squareOfDisplacedSuit.offsetHeight) / 2
-              }px`;
-              placedSuits.set(
-                previousSectionIdOfSuitToPlace,
-                suitCurrentlyInTarget
-              );
-              squareOfDisplacedSuit.classList.add("placed");
-            } else {
-              resetSquarePosition(squareOfDisplacedSuit, null);
-              placedSuits.delete(targetSectionId);
-            }
-          } else {
-            // currentSquare was unplaced, so reset displaced one to its original container
-            resetSquarePosition(squareOfDisplacedSuit, null); // Pass null or find its own originalPosition if tracked
-            placedSuits.delete(targetSectionId); // Remove the mapping for the displaced suit from target
-          }
-        }
-      }
-
-      // Remove suitToPlace from its old position (if any)
-      if (
-        previousSectionIdOfSuitToPlace &&
-        previousSectionIdOfSuitToPlace !== targetSectionId
-      ) {
-        placedSuits.delete(previousSectionIdOfSuitToPlace);
-      }
-
-      // Place currentSquare (suitToPlace) in the new targetSection
-      placedSuits.set(targetSectionId, suitToPlace);
-      currentSquare.classList.add("placed");
-      currentSquare.style.position = "fixed"; // Ensure it stays fixed
-      currentSquare.style.left = `${
-        closestTargetRect.left +
-        (closestTargetRect.width - currentSquare.offsetWidth) / 2
-      }px`;
-      currentSquare.style.top = `${
-        closestTargetRect.top +
-        (closestTargetRect.height - currentSquare.offsetHeight) / 2
-      }px`;
-    }
-
-    if (!isPlacedSuccessfully && originalPosition) {
-      resetSquarePosition(currentSquare, originalPosition);
-      // If it was previously placed, remove its suit from placedSuits map
-      const previousSuitEntry = Array.from(placedSuits.entries()).find(
-        ([, s]) => s === currentSquare.dataset.suit
-      );
-      if (previousSuitEntry) {
-        placedSuits.delete(previousSuitEntry[0]);
-      }
-    }
-
-    if (currentSquare) {
-      // Reset styles after operation
-      currentSquare.style.opacity = "1";
-      currentSquare.style.zIndex = "1"; // Default z-index
-      currentSquare.style.transition = "all 0.3s ease"; // Re-enable transition
-    }
-
-    // updateGridVisibility(); // Called in updateReadyButtonState
-    updateReadyButtonState();
-
-    isDragging = false;
-    currentSquare = null;
-    originalPosition = null;
-  });
-}
 
 let countdownTimer = null;
 let gameStarting = false;
@@ -1306,7 +983,6 @@ function checkAllPlayersReady() {
 
 function resetGameState() {
   isReady = false;
-  resetCardGameState();
   players = [];
   updatePlayerList(); // Visually clear player list
   //updatePlayerCount(); // Update count display
@@ -1323,8 +999,6 @@ function resetGameState() {
     // resetSquarePosition(square, findOriginalPositionDataFor(square)); // Example
   });
   placedSuits.clear(); // Clear map of placed suits
-  updateReadyButtonState(); // Reflect that no suits are placed
-  updateGridVisibility();
 
   // Restore lobby music or default state music if applicable
   // For simplicity, stopping current and letting user/host re-initiate
@@ -1370,135 +1044,129 @@ function resetGameState() {
   console.log("Game state reset (host disconnected?).");
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => {
-    updateReadyButtonState();
-    updateGridVisibility();
-  });
-} else {
-  updateReadyButtonState();
-  updateGridVisibility();
-}
+// Game state management
+const gameState = {
+  sector: null,
+  location: null,
+  weather: "default",
+  timeOfDay: "default",
+};
 
-// Card handling constants and variables
-const STARTING_HAND_SIZE = 5;
-const CARD_SUITS = ["hearts", "diamonds", "clubs", "spades"];
-const CARD_VALUES = [
-  "A",
-  "2",
-  "3",
-  "4",
-  "5",
-  "6",
-  "7",
-  "8",
-  "9",
-  "10",
-  "J",
-  "Q",
-  "K",
-];
+// Load and handle world data
+async function loadWorldData() {
+  try {
+    const response = await fetch("../the-second-law-client/js/world.json");
+    const worldData = await response.json();
 
-// Boat placement constants and functions
-const MIN_BOAT_DISTANCE = 3; // Minimum squares between boats
-const MIN_CENTER_DISTANCE = 2; // Minimum squares from center
-const BOAT_SIZE = 2; // Size of boat in grid squares (2x2)
+    const sectorSelect = document.getElementById("sector-select");
+    const locationsList = document.getElementById("locations");
+    const stateControls = document.getElementById("location-selector");
 
-function createGridArray(size) {
-  return Array(size)
-    .fill(null)
-    .map(() => Array(size).fill(false));
-}
+    // Add environment controls if they don't exist
+    if (!document.getElementById("game-state-controls") && stateControls) {
+      const controlsDiv = document.createElement("div");
+      controlsDiv.id = "game-state-controls";
+      controlsDiv.innerHTML = `
+        <h3>Environment Controls</h3>
+        <div class="control-group">
+          <label for="weather-select">Weather:</label>
+          <select id="weather-select" class="darkable themeable">
+            <option value="default">Default</option>
+            <option value="clear">Clear</option>
+            <option value="rain">Rain</option>
+            <option value="storm">Storm</option>
+            <option value="fog">Fog</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="time-select">Time of Day:</label>
+          <select id="time-select" class="darkable themeable">
+            <option value="default">Default</option>
+            <option value="dawn">Dawn</option>
+            <option value="day">Day</option>
+            <option value="dusk">Dusk</option>
+            <option value="night">Night</option>
+          </select>
+        </div>
+      `;
+      stateControls.appendChild(controlsDiv);
 
-function isValidBoatPlacement(grid, x, y, gridSize) {
-  if (x < 0 || x + BOAT_SIZE > gridSize || y < 0 || y + BOAT_SIZE > gridSize)
-    return false;
+      // Add event listeners for environment controls
+      const weatherSelect = document.getElementById("weather-select");
+      const timeSelect = document.getElementById("time-select");
 
-  // Check if too close to center
-  const center = gridSize / 2;
-  const distToCenter = Math.min(
-    Math.abs(x + 1 - center),
-    Math.abs(x + BOAT_SIZE - center),
-    Math.abs(y + 1 - center),
-    Math.abs(y + BOAT_SIZE - center)
-  );
-  if (distToCenter < MIN_CENTER_DISTANCE) return false;
-
-  // Check surrounding area for other boats
-  for (
-    let checkY = Math.max(0, y - MIN_BOAT_DISTANCE);
-    checkY < Math.min(gridSize, y + BOAT_SIZE + MIN_BOAT_DISTANCE);
-    checkY++
-  ) {
-    for (
-      let checkX = Math.max(0, x - MIN_BOAT_DISTANCE);
-      checkX < Math.min(gridSize, x + BOAT_SIZE + MIN_BOAT_DISTANCE);
-      checkX++
-    ) {
-      if (grid[checkY][checkX]) return false;
-    }
-  }
-  return true;
-}
-
-function placeBoats(numPlayers) {
-  const playerAreaSide = 2;
-  const spacingLogCoefficient = 0.5;
-  const offset = 4;
-  const logAlgorithm =
-    100 /
-    ((playerAreaSide + spacingLogCoefficient * Math.log(numPlayers)) *
-      Math.sqrt(numPlayers) +
-      offset);
-  const linearAlgorithm = 100 / (playerAreaSide * numPlayers + offset);
-  const division = numPlayers > 2 ? linearAlgorithm : 100 / 8;
-
-  // Calculate grid size based on viewport divisions
-  const gridSize = Math.floor(100 / division);
-  let grid = createGridArray(gridSize);
-  let boatPositions = [];
-  let attempts = 0;
-  const maxAttempts = 1000;
-
-  while (boatPositions.length < numPlayers && attempts < maxAttempts) {
-    if (attempts > 0 && boatPositions.length === 0) {
-      // Reset grid if we can't place any boats
-      grid = createGridArray(gridSize);
-    }
-
-    const x = Math.floor(Math.random() * (gridSize - BOAT_SIZE));
-    const y = Math.floor(Math.random() * (gridSize - BOAT_SIZE));
-
-    if (isValidBoatPlacement(grid, x, y, gridSize)) {
-      // Mark boat position in grid
-      for (let dy = 0; dy < BOAT_SIZE; dy++) {
-        for (let dx = 0; dx < BOAT_SIZE; dx++) {
-          grid[y + dy][x + dx] = true;
-        }
+      if (weatherSelect) {
+        weatherSelect.addEventListener("change", (e) => {
+          gameState.weather = e.target.value;
+          sendGameState();
+        });
       }
 
-      boatPositions.push({ x, y });
-
-      if (boatPositions.length === numPlayers) {
-        return {
-          positions: boatPositions,
-          gridSize: gridSize,
-          division: division,
-        };
+      if (timeSelect) {
+        timeSelect.addEventListener("change", (e) => {
+          gameState.timeOfDay = e.target.value;
+          sendGameState();
+        });
       }
     }
 
-    attempts++;
-    if (attempts >= maxAttempts) {
-      // Start over if we can't place all boats
-      attempts = 0;
-      boatPositions = [];
-      grid = createGridArray(gridSize);
-    }
-  }
+    // Populate sectors dropdown
+    worldData.sectors.forEach((sector) => {
+      const option = document.createElement("option");
+      option.value = sector.name;
+      option.textContent = sector.name;
+      sectorSelect.appendChild(option);
+    });
 
-  return null; // Should never reach here unless something is wrong
+    // Handle sector selection
+    sectorSelect.addEventListener("change", (e) => {
+      locationsList.innerHTML = ""; // Clear current locations
+      const selectedSector = worldData.sectors.find(
+        (s) => s.name === e.target.value
+      );
+
+      if (selectedSector) {
+        gameState.sector = selectedSector.name;
+        gameState.location = null;
+        sendGameState();
+
+        selectedSector.locations.forEach((location) => {
+          const li = document.createElement("li");
+          li.textContent = location.name;
+          li.title = location.description;
+          li.addEventListener("click", () => {
+            gameState.location = location.name;
+            sendGameState();
+          });
+          locationsList.appendChild(li);
+        });
+      }
+    });
+  } catch (error) {
+    console.error("Error loading world data:", error);
+  }
 }
+
+function sendGameState() {
+  if (window.networkManager) {
+    window.networkManager.sendGameState(
+      JSON.stringify({
+        type: "gameState",
+        state: {
+          sector: gameState.sector,
+          location: gameState.location,
+          weather: gameState.weather,
+          timeOfDay: gameState.timeOfDay,
+        },
+      })
+    );
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  // Load world data when the page loads
+  loadWorldData();
+});
 
 function updatePlayerCount() {
   const playerList = document.getElementById("player-list");

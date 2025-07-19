@@ -3,30 +3,26 @@
 <html lang="en">
   <head>
     <title>T2L Host</title>
-    <link rel="icon" href="/games/img/boatgame_icon.png" />
+    <link rel="icon" href="/games/img/the_second_law_icon.png" />
     <meta name="darkreader-lock" />
     <link rel="stylesheet" type="text/css" href="./css/index.css" />
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
   </head>
   <body class="darkable">
-    <div id="lobby-overlay" class="desktop-only">
-      <img
-        id="game-logo"
-        class="desktop-only"
-        src="./img/boatgame_icon.png"
-        alt="BoatGame Logo"
-      />
-      <p id="game-title" class="desktop-only darkable">
-        An original game by EvanderIV
-      </p>
-      <button id="create-lobby" class="desktop-only">
-        CREATE PRIVATE LOBBY
-      </button>
-    </div>
     <div id="room-code" class="desktop-only darkable"></div>
     <div class="game-container">
       <div id="player-list" class="desktop-only darkable themeable">
         <div id="players-container"></div>
+      </div>
+      <div id="location-selector" class="desktop-only darkable themeable">
+        <h2>Location</h2>
+        <select id="sector-select" class="darkable themeable">
+          <option value="">Select a sector...</option>
+        </select>
+        <div id="location-list">
+          <h3>Available Locations</h3>
+          <ul id="locations"></ul>
+        </div>
       </div>
     </div>
     <div id="side-panel">
@@ -104,6 +100,20 @@
         </div>
         <button id="close-settings" class="darkable">&times;</button>
       </div>
+    </div>
+    <div id="lobby-overlay" class="desktop-only">
+      <img
+        id="game-logo"
+        class="desktop-only"
+        src="../the-second-law-client/img/logo.png"
+        alt="The Second Law logo"
+      />
+      <p id="game-title" class="desktop-only darkable">
+        An original game by EvanderIV
+      </p>
+      <button id="create-lobby" class="desktop-only">
+        CREATE PRIVATE LOBBY
+      </button>
     </div>
   </body>
   <script type="module" src="./js/networking.js"></script>
