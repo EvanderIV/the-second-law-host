@@ -184,8 +184,12 @@ io.on("connection", (client) => {
           (gameState.sector === null || typeof gameState.sector === "string") &&
           (gameState.location === null ||
             typeof gameState.location === "string") &&
-          ["clear", "rain", "storm", "fog"].includes(gameState.weather) &&
-          ["dawn", "day", "dusk", "night"].includes(gameState.timeOfDay);
+          ["default", "clear", "rain", "storm", "fog"].includes(
+            gameState.weather
+          ) &&
+          ["default", "dawn", "day", "dusk", "night"].includes(
+            gameState.timeOfDay
+          );
 
         if (!validState) {
           console.error("Invalid game state received:", gameState);
