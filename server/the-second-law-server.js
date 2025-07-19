@@ -81,17 +81,25 @@ io.on("connection", (client) => {
       client.emit("joinSuccess", {
         roomCode,
         hostSkin: room.hostSkin,
+        gameState: room.gameState,
       });
       return;
     }
 
     room.players.set(client.id, playerData);
     client.join(roomCode);
-    client.emit("joinSuccess", {
+
+    // Send initial game state with join success
+    const joinData = {
       roomCode,
       hostSkin: room.hostSkin,
       gameState: room.gameState,
-    });
+    };
+    console.log(`Sending join data with game state:`, joinData);
+    client.emit("joinSuccess", joinData);
+
+    // Also emit current game state separately to ensure it's received
+    client.emit("gameState", room.gameState);
     io.to(room.hostId).emit("playerJoined", playerData);
     console.log(`Player ${data.name} joined room: ${roomCode}`);
   });
@@ -177,19 +185,33 @@ io.on("connection", (client) => {
         // Parse the game state if it's a string (JSON)
         const gameState = typeof data === "string" ? JSON.parse(data) : data;
 
-        // Update the room's game state
-        room.gameState = {
-          sector: gameState.sector,
-          location: gameState.location,
-          weather: gameState.weather,
-          timeOfDay: gameState.timeOfDay,
+        // Validate and ensure all required fields are present
+        const validatedState = {
+          sector: gameState.sector || null,
+          location: gameState.location || null,
+          weather: gameState.weather || "clear",
+          timeOfDay: gameState.timeOfDay || "day",
         };
 
+        // Update the room's game state
+        room.gameState = validatedState;
+
+        // Log the state being saved and broadcast
+        console.log(`Updating game state in room ${roomCode}:`, validatedState);
+
         // Broadcast the new state to all clients in the room
-        io.to(roomCode).emit("gameState", room.gameState);
-        console.log(`Game state updated in room ${roomCode}:`, room.gameState);
+        io.to(roomCode).emit("gameState", validatedState);
+
+        // Also send individual confirmations to ensure receipt
+        const clients = io.sockets.adapter.rooms.get(roomCode);
+        if (clients) {
+          clients.forEach((clientId) => {
+            io.to(clientId).emit("gameState", validatedState);
+          });
+        }
       } catch (error) {
         console.error("Error processing game state:", error);
+        console.error("Received data:", data);
       }
     }
   });
