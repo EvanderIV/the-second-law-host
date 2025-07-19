@@ -177,25 +177,6 @@ io.on("connection", (client) => {
         // Parse the game state if it's a string (JSON)
         const gameState = typeof data === "string" ? JSON.parse(data) : data;
 
-        // Validate the game state structure
-        const validState =
-          gameState &&
-          typeof gameState === "object" &&
-          (gameState.sector === null || typeof gameState.sector === "string") &&
-          (gameState.location === null ||
-            typeof gameState.location === "string") &&
-          ["default", "clear", "rain", "storm", "fog"].includes(
-            gameState.weather
-          ) &&
-          ["default", "dawn", "day", "dusk", "night"].includes(
-            gameState.timeOfDay
-          );
-
-        if (!validState) {
-          console.error("Invalid game state received:", gameState);
-          return;
-        }
-
         // Update the room's game state
         room.gameState = {
           sector: gameState.sector,
