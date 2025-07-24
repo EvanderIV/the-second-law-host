@@ -184,27 +184,20 @@ io.on("connection", (client) => {
       try {
         // Parse the game state if it's a string (JSON)
         const gameState = typeof data === "string" ? JSON.parse(data) : data;
-        console.log(gameState.sector);
-        console.log(gameState["sector"]);
 
         // Validate and ensure all required fields are present
         const validatedState = {
-          sector: gameState.sector || null,
-          location: gameState.location || null,
-          weather: gameState.weather || "default",
-          timeOfDay: gameState.timeOfDay || "default",
+          sector: gameState.state.sector || null,
+          location: gameState.state.location || null,
+          weather: gameState.state.weather || "default",
+          timeOfDay: gameState.state.timeOfDay || "default",
         };
 
         // Update the room's game state
         room.gameState = validatedState;
 
         // Log the state being saved and broadcast
-        console.log(
-          `Updating game state in room ${roomCode}:`,
-          validatedState,
-          `set from host ${client.id}:`,
-          data
-        );
+        console.log(`Updating game state in room ${roomCode}:`, validatedState);
 
         // Broadcast the new state to all clients in the room
         io.to(roomCode).emit("gameState", validatedState);
