@@ -46,8 +46,8 @@ io.on("connection", (client) => {
       gameState: {
         sector: null,
         location: null,
-        weather: "clear",
-        timeOfDay: "day",
+        weather: "default",
+        timeOfDay: "default",
       },
     });
     client.join(roomCode);
@@ -189,15 +189,20 @@ io.on("connection", (client) => {
         const validatedState = {
           sector: gameState.sector || null,
           location: gameState.location || null,
-          weather: gameState.weather || "clear",
-          timeOfDay: gameState.timeOfDay || "day",
+          weather: gameState.weather || "default",
+          timeOfDay: gameState.timeOfDay || "default",
         };
 
         // Update the room's game state
         room.gameState = validatedState;
 
         // Log the state being saved and broadcast
-        console.log(`Updating game state in room ${roomCode}:`, validatedState);
+        console.log(
+          `Updating game state in room ${roomCode}:`,
+          validatedState,
+          `set from host ${client.id}:`,
+          data
+        );
 
         // Broadcast the new state to all clients in the room
         io.to(roomCode).emit("gameState", validatedState);
