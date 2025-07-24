@@ -184,6 +184,8 @@ io.on("connection", (client) => {
       try {
         // Parse the game state if it's a string (JSON)
         const gameState = typeof data === "string" ? JSON.parse(data) : data;
+        console.log(gameState.sector);
+        console.log(gameState["sector"]);
 
         // Validate and ensure all required fields are present
         const validatedState = {
