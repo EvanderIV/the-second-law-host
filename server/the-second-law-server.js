@@ -201,14 +201,6 @@ io.on("connection", (client) => {
 
         // Broadcast the new state to all clients in the room
         io.to(roomCode).emit("gameState", validatedState);
-
-        // Also send individual confirmations to ensure receipt
-        const clients = io.sockets.adapter.rooms.get(roomCode);
-        if (clients) {
-          clients.forEach((clientId) => {
-            io.to(clientId).emit("gameState", validatedState);
-          });
-        }
       } catch (error) {
         console.error("Error processing game state:", error);
         console.error("Received data:", data);
