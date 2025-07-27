@@ -1181,18 +1181,13 @@ async function loadWorldData() {
       gameState.actor = null; // Reset actor in state when selection changes
 
       if (selectedActorName) {
-        // Normalize actor name for matching with actions.json (e.g., "Cedric James" -> "cedricjames")
-        const normalizedActorName = selectedActorName
-          .toLowerCase()
-          .replace(/\s+/g, "");
-
         // Find the actor in actionsData.music
         const actorActionObject = actionsData.music.find(
-          (action) => action[normalizedActorName]
+          (action) => action[selectedActorName]
         );
 
         if (actorActionObject) {
-          const actorActions = actorActionObject[normalizedActorName];
+          const actorActions = actorActionObject[selectedActorName];
           if (actorActions && actorActions.length > 0) {
             actorActions.forEach((action) => {
               const actionButton = document.createElement("button");
@@ -1201,7 +1196,7 @@ async function loadWorldData() {
               if (darkMode) actionButton.classList.add("darkmode");
               actionButton.addEventListener("click", () => {
                 // Set the actor in the game state and send it
-                gameState.actor = normalizedActorName;
+                gameState.actor = selectedActorName;
                 gameState.action = action.trigger; // Store the action trigger
                 sendGameState();
               });
@@ -1228,6 +1223,7 @@ function sendGameState() {
       weather: gameState.weather,
       timeOfDay: gameState.timeOfDay,
       actor: gameState.actor,
+      action: gameState.action,
     };
 
     const payload = JSON.stringify({
