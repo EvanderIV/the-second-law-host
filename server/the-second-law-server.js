@@ -191,6 +191,8 @@ io.on("connection", (client) => {
           location: gameState.state.location || null,
           weather: gameState.state.weather || "default",
           timeOfDay: gameState.state.timeOfDay || "default",
+          actor: gameState.state.actor || null,
+          action: gameState.state.action || "Interact",
         };
 
         // Update the room's game state

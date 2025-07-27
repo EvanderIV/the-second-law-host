@@ -1050,17 +1050,26 @@ const gameState = {
   location: null,
   weather: "default",
   timeOfDay: "default",
+  actor: null,
 };
 
 // Load and handle world data
 async function loadWorldData() {
   try {
-    const response = await fetch("../the-second-law-client/js/world.json");
-    const worldData = await response.json();
+    const [worldResponse, actionsResponse] = await Promise.all([
+      fetch("../the-second-law-client/js/world.json"),
+      fetch("../the-second-law-client/js/actions.json"),
+    ]);
+    const worldData = await worldResponse.json();
+    const actionsData = await actionsResponse.json();
 
     const sectorSelect = document.getElementById("sector-select");
     const locationsList = document.getElementById("locations");
     const stateControls = document.getElementById("location-selector");
+
+    const actorSelectorPanel = document.getElementById("actor-selector");
+    const actorSelect = document.getElementById("actor-select");
+    const actorActionsContainer = document.getElementById("actor-actions");
 
     // Add environment controls if they don't exist
     if (!document.getElementById("game-state-controls") && stateControls) {
@@ -1121,6 +1130,11 @@ async function loadWorldData() {
     // Handle sector selection
     sectorSelect.addEventListener("change", (e) => {
       locationsList.innerHTML = ""; // Clear current locations
+      actorSelectorPanel.classList.add("hidden");
+      actorSelect.innerHTML = '<option value="">Select an actor...</option>';
+      actorActionsContainer.innerHTML = "";
+      gameState.actor = null;
+
       const selectedSector = worldData.sectors.find(
         (s) => s.name === e.target.value
       );
@@ -1136,30 +1150,92 @@ async function loadWorldData() {
           li.title = location.description;
           li.addEventListener("click", () => {
             gameState.location = location.name;
+            // Reset actor state when location changes
+            gameState.actor = null;
+            actorActionsContainer.innerHTML = "";
+            actorSelect.innerHTML =
+              '<option value="">Select an actor...</option>';
+
+            if (location.actors && location.actors.length > 0) {
+              actorSelectorPanel.classList.remove("hidden");
+              location.actors.forEach((actorName) => {
+                const option = document.createElement("option");
+                option.value = actorName;
+                option.textContent = actorName;
+                actorSelect.appendChild(option);
+              });
+            } else {
+              actorSelectorPanel.classList.add("hidden");
+            }
             sendGameState();
           });
           locationsList.appendChild(li);
         });
       }
     });
+
+    // Handle actor selection
+    actorSelect.addEventListener("change", (e) => {
+      const selectedActorName = e.target.value;
+      actorActionsContainer.innerHTML = ""; // Clear previous actions
+      gameState.actor = null; // Reset actor in state when selection changes
+
+      if (selectedActorName) {
+        // Normalize actor name for matching with actions.json (e.g., "Cedric James" -> "cedricjames")
+        const normalizedActorName = selectedActorName
+          .toLowerCase()
+          .replace(/\s+/g, "");
+
+        // Find the actor in actionsData.music
+        const actorActionObject = actionsData.music.find(
+          (action) => action[normalizedActorName]
+        );
+
+        if (actorActionObject) {
+          const actorActions = actorActionObject[normalizedActorName];
+          if (actorActions && actorActions.length > 0) {
+            actorActions.forEach((action) => {
+              const actionButton = document.createElement("button");
+              actionButton.className = "action-button darkable themeable";
+              actionButton.textContent = action.trigger; // e.g., "interact"
+              if (darkMode) actionButton.classList.add("darkmode");
+              actionButton.addEventListener("click", () => {
+                // Set the actor in the game state and send it
+                gameState.actor = normalizedActorName;
+                gameState.action = action.trigger; // Store the action trigger
+                sendGameState();
+              });
+              actorActionsContainer.appendChild(actionButton);
+            });
+          }
+        }
+      } else {
+        // If "Select an actor..." is chosen, send the null actor state immediately
+        // to cancel any active override.
+        sendGameState();
+      }
+    });
   } catch (error) {
-    console.error("Error loading world data:", error);
+    console.error("Error loading world or actions data:", error);
   }
 }
 
 function sendGameState() {
   if (window.networkManager) {
-    window.networkManager.sendGameState(
-      JSON.stringify({
-        type: "gameState",
-        state: {
-          sector: gameState.sector,
-          location: gameState.location,
-          weather: gameState.weather,
-          timeOfDay: gameState.timeOfDay,
-        },
-      })
-    );
+    const stateToSend = {
+      sector: gameState.sector,
+      location: gameState.location,
+      weather: gameState.weather,
+      timeOfDay: gameState.timeOfDay,
+      actor: gameState.actor,
+    };
+
+    const payload = JSON.stringify({
+      type: "gameState",
+      state: stateToSend,
+    });
+
+    window.networkManager.sendGameState(payload);
   }
 }
 
