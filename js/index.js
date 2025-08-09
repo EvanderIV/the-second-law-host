@@ -1058,7 +1058,7 @@ async function loadWorldData() {
   try {
     const [worldResponse, actionsResponse] = await Promise.all([
       fetch("../the-second-law-client/js/world.json"),
-      fetch("../the-second-law-client/js/actions.json"),
+      fetch("../the-second-law-client/js/actors.json"),
     ]);
     const worldData = await worldResponse.json();
     const actionsData = await actionsResponse.json();
