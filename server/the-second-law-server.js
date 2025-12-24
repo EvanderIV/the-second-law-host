@@ -231,6 +231,45 @@ io.on("connection", (client) => {
     }
   });
 
+  // Function to handle reconnections
+  function handleReconnection(socket, data) {
+    if (!data.code) {
+      socket.emit("reconnectResponse", {
+        success: false,
+        error: "Invalid session code",
+      });
+      return;
+    }
+
+    const session = activeRooms.get(data.code);
+    if (!session) {
+      socket.emit("reconnectResponse", {
+        success: false,
+        error: "Session not found",
+      });
+      return;
+    }
+
+    // Reassociate the client with the session
+    session.players = session.players || new Map();
+    if (!session.players.has(socket.id)) {
+      session.players.set(socket.id, {
+        name: "Reconnected Player",
+        skinId: null,
+        ready: false,
+      });
+    }
+
+    socket.join(data.code); // Join the client to the session's room
+    socket.emit("reconnectResponse", { success: true });
+
+    // Notify other clients in the session
+    socket.to(data.code).emit("clientReconnected", { clientId: socket.id });
+    console.log(`Client ${socket.id} reconnected to session ${data.code}`);
+  }
+
+  client.on("reconnectSession", (data) => handleReconnection(client, data));
+
   const handleDisconnect = () => {
     if (roomCode) {
       const room = activeRooms.get(roomCode);
