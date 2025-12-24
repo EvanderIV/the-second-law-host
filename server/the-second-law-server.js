@@ -231,6 +231,18 @@ io.on("connection", (client) => {
     }
   });
 
+  // Function to fetch the current room state
+  function getRoomState(roomCode) {
+    const room = activeRooms.get(roomCode);
+    if (!room) return null;
+
+    return {
+      hostSkin: room.hostSkin,
+      gameState: room.gameState,
+      players: Array.from(room.players.values()),
+    };
+  }
+
   // Function to handle reconnections
   function handleReconnection(socket, data) {
     if (!data.code) {
@@ -260,11 +272,18 @@ io.on("connection", (client) => {
       });
     }
 
-    socket.join(data.code); // Join the client to the session's room
+    socket.join(data.code); // Add the client back to the room
     socket.emit("reconnectResponse", { success: true });
 
-    // Notify other clients in the session
+    // Notify other clients in the room
     socket.to(data.code).emit("clientReconnected", { clientId: socket.id });
+
+    // Send the current room state to the reconnected client
+    const roomState = getRoomState(data.code);
+    if (roomState) {
+      socket.emit("roomStateUpdate", roomState);
+    }
+
     console.log(`Client ${socket.id} reconnected to session ${data.code}`);
   }
 
